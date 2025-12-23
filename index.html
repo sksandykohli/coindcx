@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Trading Analysis Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+:root{
+ --bg:#020617;--panel:#0b1228;--panel2:#0e1733;
+ --blue:#38bdf8;--green:#22c55e;--red:#ef4444;
+ --text:#e5e7eb;--muted:#94a3b8;--border:#1e293b;
+}
+*{box-sizing:border-box}
+body{
+ margin:0;font-family:Inter,Segoe UI,Arial;
+ background:linear-gradient(135deg,#020617,#030a2a);
+ color:var(--text);padding:24px
+}
+header{font-size:26px;font-weight:700;color:var(--blue);margin-bottom:20px}
+
+/* ===== Layout ===== */
+.app{max-width:1400px;margin:auto;display:grid;grid-template-columns:300px 1fr;gap:20px}
+.left,.right{display:flex;flex-direction:column;gap:16px}
+
+.card{
+ background:linear-gradient(180deg,var(--panel),var(--panel2));
+ border:1px solid var(--border);
+ border-radius:16px;padding:18px
+}
+.card h3{margin:0 0 14px;font-size:15px;color:#a5f3fc}
+
+label{font-size:12px;color:var(--muted)}
+input{
+ width:100%;padding:11px;margin:6px 0 12px;
+ border-radius:10px;border:1px solid var(--border);
+ background:#020617;color:#fff
+}
+
+button{cursor:pointer;border:none}
+
+.buyBtn{background:linear-gradient(135deg,#22c55e,#16a34a);color:#022c22;font-weight:700;padding:12px;border-radius:12px}
+.shortBtn{background:linear-gradient(135deg,#ef4444,#b91c1c);color:#fff;font-weight:700;padding:12px;border-radius:12px}
+.downloadBtn{background:#38bdf8;color:#022c22;font-weight:700;padding:8px;border-radius:12px;margin-right:5px}
+.uploadBtn{background:#facc15;color:#022c22;font-weight:700;padding:8px;border-radius:12px}
+
+/* Exit % */
+.pcts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+.pct{background:#020617;border:1px solid var(--border);color:#e5e7eb;padding:8px;border-radius:8px;font-size:12px}
+.pct:hover{background:#0b1228}
+
+/* ===== History ===== */
+.history-wrap{height:100%;display:flex;flex-direction:column}
+.history-wrap table{width:100%;border-collapse:collapse;font-size:13px}
+.history-wrap th,.history-wrap td{padding:10px;border-bottom:1px solid var(--border)}
+.history-wrap th{color:var(--muted);text-align:left}
+.history-wrap td.pnl{text-align:right;font-weight:700}
+.history-wrap tr.buy{background:rgba(34,197,94,.06)}
+.history-wrap tr.sell{background:rgba(239,68,68,.06)}
+.history-wrap tfoot td{border-top:2px solid var(--border);font-weight:800}
+
+.green{color:var(--green);}
+.red{color:var(--red);}
+
+/* ===== Stats ===== */
+.stat{display:flex;justify-content:space-between;font-size:13px;margin-top:6px}
+
+@media(max-width:900px){
+ .app{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<header>📊 Trading Analysis Dashboard <span style="font-size:14px">Spot BUY + Futures SHORT</span></header>
+
+<div class="app">
+
+<!-- LEFT PANEL -->
+<div class="left">
+
+<div class="card">
+<h3>Market</h3>
+<label>Exit %</label>
+<div class="pcts">
+<button class="pct" data-pct="20">+20%</button>
+<button class="pct" data-pct="25">+25%</button>
+<button class="pct" data-pct="-10">-10%</button>
+</div>
+<label>Exit Price</label>
+<input id="price" type="number" step="0.0001" value="0.11">
+</div>
+
+<div class="card">
+<h3>Spot Trade</h3>
+<label>Direction</label>
+<input value="BUY" disabled>
+<label>Amount (₹)</label>
+<input id="spotAmount" type="number" value="1000">
+<label>Entry</label>
+<input id="spotEntry" type="number" step="0.0001" value="0.11">
+<label>Quantity</label>
+<input id="spotQty" type="number" value="0" disabled>
+<button id="buyBtn" class="buyBtn">BUY</button>
+</div>
+
+<div class="card">
+<h3>Futures Trade</h3>
+<label>Direction</label>
+<input value="SHORT" disabled>
+<label>Amount (₹)</label>
+<input id="futAmount" type="number" value="500">
+<label>Entry</label>
+<input id="futEntry" type="number" step="0.0001" value="0.11">
+<label>Quantity</label>
+<input id="futQty" type="number" value="0" disabled>
+<label>Leverage</label>
+<input id="lev" type="number" value="5">
+<button id="shortBtn" class="shortBtn">SHORT</button>
+<div class="stat"><span>Position Size</span><span id="pos">-</span></div>
+<div class="stat"><span>Margin Used</span><span id="margin">-</span></div>
+<div class="stat"><span>Futures PnL</span><span id="futPnl">-</span></div>
+</div>
+
+</div>
+
+<!-- RIGHT PANEL -->
+<div class="right">
+<div class="card history-wrap">
+<h3>Trade History</h3>
+<div style="margin-bottom:10px">
+ <button id="downloadBtn" class="downloadBtn">Download History</button>
+ <input type="file" id="uploadFile" class="uploadBtn" accept=".csv">
+</div>
+<table>
+<thead>
+<tr>
+<th>No.</th><th>Symbol</th><th>Side</th><th>Qty</th><th>Entry</th><th>Total Price</th><th>Exit</th><th style="text-align:right">P&L</th>
+</tr>
+</thead>
+<tbody id="history"></tbody>
+<tfoot>
+<tr>
+<td colspan="7" style="text-align:right">Total P&L</td><td id="totalPnl" class="pnl">₹0.00</td>
+</tr>
+</tfoot>
+</table>
+</div>
+</div>
+
+</div>
+
+<script>
+let tradeNo=0,totalPnl=0;
+let uploaded=false;
+
+const price=document.getElementById('price');
+
+// Spot elements
+const spotAmount=document.getElementById('spotAmount');
+const spotEntry=document.getElementById('spotEntry');
+const spotQty=document.getElementById('spotQty');
+const buyBtn=document.getElementById('buyBtn');
+
+// Futures elements
+const futAmount=document.getElementById('futAmount');
+const futEntry=document.getElementById('futEntry');
+const futQty=document.getElementById('futQty');
+const lev=document.getElementById('lev');
+const shortBtn=document.getElementById('shortBtn');
+
+// History
+const history=document.getElementById('history');
+const totalPnlEl=document.getElementById('totalPnl');
+
+const downloadBtn=document.getElementById('downloadBtn');
+const uploadFile=document.getElementById('uploadFile');
+
+// Exit % buttons
+document.querySelectorAll('.pct').forEach(b=>{
+ b.onclick=()=>{
+  const p=parseFloat(b.dataset.pct);
+  const base=parseFloat(spotEntry.value);
+  price.value=(base+base*p/100).toFixed(4);
+ };
+});
+
+// Quantity calculation
+function calcSpotQty(){ spotQty.value = (spotAmount.value / spotEntry.value).toFixed(0); }
+function calcFutQty(){ futQty.value = (futAmount.value / futEntry.value).toFixed(0); }
+
+spotAmount.oninput = calcSpotQty;
+spotEntry.oninput = calcSpotQty;
+calcSpotQty();
+
+futAmount.oninput = calcFutQty;
+futEntry.oninput = calcFutQty;
+calcFutQty();
+
+// Disable trades until upload
+function canTrade(){ return uploaded || history.rows.length===0; }
+
+// Auto-fill last trade
+function fillLastTrade(){
+  const rows = document.querySelectorAll('#history tr');
+  if(rows.length === 0) return;
+  const lastRow = rows[rows.length - 1];
+  const tds = lastRow.querySelectorAll('td');
+  const side = tds[2].innerText;
+  const qty = parseFloat(tds[3].innerText.replace('-',''));
+  const entry = parseFloat(tds[4].innerText.replace('₹',''));
+  const totalPrice = parseFloat(tds[5].innerText.replace('₹',''));
+  if(side === 'BUY'){
+    spotEntry.value = entry;
+    spotAmount.value = totalPrice;
+    calcSpotQty();
+  } else if(side === 'SHORT'){
+    futEntry.value = entry;
+    futAmount.value = totalPrice;
+    calcFutQty();
+  }
+}
+
+// BUY trade
+buyBtn.onclick = () => {
+ if(!canTrade()){ alert("Please upload history first."); return; }
+ tradeNo++;
+ const qty = parseFloat(spotQty.value);
+ const entry = parseFloat(spotEntry.value);
+ const exit = parseFloat(price.value);
+ const pnl = (exit - entry) * qty;
+ totalPnl += pnl;
+ const totalPrice = (qty * entry).toFixed(2);
+ const pnlClass = pnl >=0 ? 'pnl green' : 'pnl red';
+
+ history.innerHTML += `
+   <tr class="buy">
+     <td>${tradeNo}</td><td>SEI/USD</td><td>BUY</td><td>${qty}</td>
+     <td>₹${entry.toFixed(4)}</td><td>₹${totalPrice}</td>
+     <td>₹${exit.toFixed(4)}</td><td class="${pnlClass}">₹${pnl.toFixed(2)}</td>
+   </tr>`;
+ updateTotalPnl();
+ fillLastTrade();
+};
+
+// SHORT trade
+shortBtn.onclick = () => {
+ if(!canTrade()){ alert("Please upload history first."); return; }
+ tradeNo++;
+ const qty = parseFloat(futQty.value);
+ const entry = parseFloat(futEntry.value);
+ const exit = parseFloat(price.value);
+ const pnl = (entry - exit) * qty;
+ totalPnl += pnl;
+ const totalPrice = (qty * entry).toFixed(2);
+ const pnlClass = pnl >=0 ? 'pnl green' : 'pnl red';
+
+ document.getElementById('pos').innerText = (qty * entry).toFixed(2);
+ document.getElementById('margin').innerText = ((qty * entry) / lev.value).toFixed(2);
+ document.getElementById('futPnl').innerText = pnl.toFixed(2);
+
+ history.innerHTML += `
+   <tr class="sell">
+     <td>${tradeNo}</td><td>SEI/USD</td><td>SHORT</td><td>-${qty}</td>
+     <td>₹${entry.toFixed(4)}</td><td>₹${totalPrice}</td>
+     <td>₹${exit.toFixed(4)}</td><td class="${pnlClass}">₹${pnl.toFixed(2)}</td>
+   </tr>`;
+ updateTotalPnl();
+ fillLastTrade();
+};
+
+// Total PnL
+function updateTotalPnl(){
+ totalPnlEl.innerText = `₹${totalPnl.toFixed(2)}`;
+ totalPnlEl.className = totalPnl >= 0 ? 'pnl green' : 'pnl red';
+}
+
+// Download CSV
+downloadBtn.onclick = () => {
+ let csv = 'No,Symbol,Side,Qty,Entry,TotalPrice,Exit,PnL\n';
+ document.querySelectorAll('#history tr').forEach(tr=>{
+  const tds = tr.querySelectorAll('td');
+  const row = Array.from(tds).map(td => td.innerText.replace('₹','')).join(',');
+  csv += row + '\n';
+ });
+ const blob = new Blob([csv], {type: 'text/csv'});
+ const url = URL.createObjectURL(blob);
+ const a = document.createElement('a');
+ a.href = url;
+ a.download = 'trade_history.csv';
+ a.click();
+ URL.revokeObjectURL(url);
+};
+
+// Upload CSV
+uploadFile.onchange = (e)=>{
+ const file = e.target.files[0];
+ if(!file) return;
+ const reader = new FileReader();
+ reader.onload = function(evt){
+  const data = evt.target.result.split('\n').slice(1);
+  history.innerHTML = '';
+  totalPnl = 0;
+  tradeNo = 0;
+  data.forEach(line=>{
+   if(!line.trim()) return;
+   const [no,symbol,side,qty,entry,totalPrice,exit,pnl] = line.split(',');
+   tradeNo = Math.max(tradeNo, parseInt(no));
+   totalPnl += parseFloat(pnl);
+   const pnlClass = parseFloat(pnl)>=0 ? 'pnl green' : 'pnl red';
+   history.innerHTML += `<tr class="${side==='BUY'?'buy':'sell'}">
+     <td>${no}</td><td>${symbol}</td><td>${side}</td><td>${qty}</td>
+     <td>₹${parseFloat(entry).toFixed(4)}</td>
+     <td>₹${parseFloat(totalPrice).toFixed(2)}</td>
+     <td>₹${parseFloat(exit).toFixed(4)}</td>
+     <td class="${pnlClass}">₹${parseFloat(pnl).toFixed(2)}</td>
+   </tr>`;
+  });
+  updateTotalPnl();
+  uploaded = true;
+  fillLastTrade(); // auto-fill after upload
+ };
+ reader.readAsText(file);
+};
+
+window.onload = fillLastTrade;
+</script>
+</body>
+</html>
